@@ -490,28 +490,43 @@ class FileReadTool(BaseTool):
     ) -> str:
         file_path = kwargs.get("file_path", self.file_path)
         
-        # Handle start_line parameter - convert string to int if needed
-        start_line_raw = kwargs.get("start_line", 1)
-        if isinstance(start_line_raw, str):
-            try:
-                start_line = int(start_line_raw) if start_line_raw.lower() != 'none' else 1
-            except ValueError:
-                start_line = 1
-        else:
-            start_line = start_line_raw or 1
-        
-        # Handle line_count parameter - convert string to int or None if needed
-        line_count_raw = kwargs.get("line_count", None)
-        if isinstance(line_count_raw, str):
-            if line_count_raw.lower() == 'none' or line_count_raw == '':
-                line_count = None
-            else:
+        # Helper function to clean and parse parameter values
+        def clean_and_parse_param(value, param_name, default_value):
+            """Clean and parse parameter values, handling malformed inputs"""
+            if value is None:
+                return default_value
+            
+            if isinstance(value, str):
+                # Clean the string by removing common malformed characters
+                cleaned = value.strip()
+                # Remove trailing characters like '}', '```', newlines, etc.
+                cleaned = cleaned.rstrip('}`\n\r\t ')
+                
+                # Handle None-like strings
+                if cleaned.lower() in ['none', 'null', '']:
+                    return None if param_name == 'line_count' else default_value
+                
+                # Try to parse as integer
                 try:
-                    line_count = int(line_count_raw)
+                    parsed_int = int(cleaned)
+                    return parsed_int if parsed_int > 0 else default_value
                 except ValueError:
-                    line_count = None
-        else:
-            line_count = line_count_raw
+                    # If parsing fails, return default
+                    return None if param_name == 'line_count' else default_value
+            
+            # Handle non-string values
+            if isinstance(value, (int, float)):
+                return int(value) if value > 0 else default_value
+            
+            return default_value
+        
+        # Handle start_line parameter with enhanced cleaning
+        start_line_raw = kwargs.get("start_line", 1)
+        start_line = clean_and_parse_param(start_line_raw, 'start_line', 1)
+        
+        # Handle line_count parameter with enhanced cleaning
+        line_count_raw = kwargs.get("line_count", None)
+        line_count = clean_and_parse_param(line_count_raw, 'line_count', None)
 
         if file_path is None:
             return (
