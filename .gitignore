@@ -5,3 +5,9 @@ db/
 TODO.md
 venv/
 .venv/
+
+# Generated analysis reports
+market_analysis.md
+fundamental_analysis.md
+technical_analysis.md
+final_decision.json

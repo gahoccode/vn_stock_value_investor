@@ -489,8 +489,29 @@ class FileReadTool(BaseTool):
         **kwargs: Any,
     ) -> str:
         file_path = kwargs.get("file_path", self.file_path)
-        start_line = kwargs.get("start_line", 1)
-        line_count = kwargs.get("line_count", None)
+        
+        # Handle start_line parameter - convert string to int if needed
+        start_line_raw = kwargs.get("start_line", 1)
+        if isinstance(start_line_raw, str):
+            try:
+                start_line = int(start_line_raw) if start_line_raw.lower() != 'none' else 1
+            except ValueError:
+                start_line = 1
+        else:
+            start_line = start_line_raw or 1
+        
+        # Handle line_count parameter - convert string to int or None if needed
+        line_count_raw = kwargs.get("line_count", None)
+        if isinstance(line_count_raw, str):
+            if line_count_raw.lower() == 'none' or line_count_raw == '':
+                line_count = None
+            else:
+                try:
+                    line_count = int(line_count_raw)
+                except ValueError:
+                    line_count = None
+        else:
+            line_count = line_count_raw
 
         if file_path is None:
             return (
