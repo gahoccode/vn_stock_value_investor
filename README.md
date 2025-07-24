@@ -48,7 +48,7 @@ Có thể thay thế các MODEL bằng các model khác của Google hoặc th�
 GEMINI_API_KEY=your_gemini_api_key
 GEMINI_MODEL=gemini/gemini-2.0-flash-001
 GEMINI_REASONING_MODEL=gemini/gemini-2.5-flash-preview-04-17
-SERPER_API_KEY=your_serper_api_key
+BRAVE_API_KEY=your_brave_api_key
 FIRECRAWL_API_KEY=your_firecrawl_api_key
 ```
 
@@ -68,7 +68,7 @@ crewai run
 - vnstock >= 3.2.4
 - python-dotenv >= 1.1.0
 - Google Gemini API key (đăng kí free từ [Google AI Studio](https://aistudio.google.com/apikey))
-- Serper.dev API key (đăng kí free từ [serper.dev](https://serper.dev/api-key))
+- Brave Search API key (đăng kí free từ [Brave Search](https://brave.com/search/api/))
 - Firecrawl.dev API key (đăng kí free từ [firecrawl.dev](https://www.firecrawl.dev/app/api-keys))
 
 ### Một số lỗi có thể gặp
@@ -124,10 +124,10 @@ crewai install
 Create a `.env` file with the following environment variables:
 You can replace the MODELs with other Google models or even from OpenAi, Anthropic, xAI, Ollama...
 ```
-GEMINI_API_KEY=your_gemini_api_key
-GEMINI_MODEL=gemini/gemini-2.0-flash-001
-GEMINI_REASONING_MODEL=gemini/gemini-2.5-flash-preview-04-17
-SERPER_API_KEY=your_serper_api_key
+GEMINI_API_KEY=your_google_gemini_api_key
+GEMINI_MODEL=gemini-1.5-flash
+GEMINI_REASONING_MODEL=gemini-1.5-pro
+BRAVE_API_KEY=your_brave_search_api_key
 FIRECRAWL_API_KEY=your_firecrawl_api_key
 ```
 
@@ -148,7 +148,7 @@ crewai run
 - vnstock >= 3.2.4
 - python-dotenv >= 1.1.0
 - Google Gemini API key (register free from [Google AI Studio](https://aistudio.google.com/apikey))
-- Serper.dev API key (register free from [serper.dev](https://serper.dev/api-key))
+- Brave Search API key (register free from [Brave Search](https://brave.com/search/api/))
 - Firecrawl.dev API key (register free từ [firecrawl.dev](https://www.firecrawl.dev/app/api-keys))
 
 ### Known Issues

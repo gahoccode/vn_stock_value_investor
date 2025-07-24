@@ -2,7 +2,8 @@ from crewai import Agent, Crew, Process, Task, LLM
 from crewai.project import CrewBase, agent, crew, task
 from crewai.agents.agent_builder.base_agent import BaseAgent
 from crewai.knowledge.source.json_knowledge_source import JSONKnowledgeSource
-from crewai_tools import SerperDevTool, ScrapeWebsiteTool, WebsiteSearchTool, FirecrawlScrapeWebsiteTool
+from crewai_tools import ScrapeWebsiteTool, WebsiteSearchTool, FirecrawlScrapeWebsiteTool
+from vn_stock_advisor.tools.brave_search_tool import BraveSearchTool
 from vn_stock_advisor.tools.custom_tool import FundDataTool, TechDataTool, FileReadTool
 from pydantic import BaseModel, Field
 from typing import List, Literal
@@ -13,26 +14,29 @@ warnings.filterwarnings("ignore") # Suppress unimportant warnings
 
 # Load environment variables
 load_dotenv()
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
-GEMINI_MODEL = os.environ.get("MODEL")
-GEMINI_REASONING_MODEL = os.environ.get("MODEL_REASONING")
-SERPER_API_KEY = os.environ.get("SERPER_API_KEY")
+
+# Get API keys and model names from environment variables
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_REASONING_MODEL = os.getenv("OPENAI_REASONING_MODEL", "gpt-4o-mini")
 FIRECRAWL_API_KEY = os.environ.get("FIRECRAWL_API_KEY")
 
 # Create an LLM with a temperature of 0 to ensure deterministic outputs
-gemini_llm = LLM(
-    model=GEMINI_MODEL,
-    api_key=GEMINI_API_KEY,
+from crewai import LLM
+
+# Initialize LLMs with OpenAI GPT-4o-mini
+openai_llm = LLM(
+    model="gpt-4o-mini",
+    api_key=OPENAI_API_KEY,
     temperature=0,
     max_tokens=4096
 )
 
-# Create another LLM for reasoning tasks
-gemini_reasoning_llm = LLM(
-    model=GEMINI_REASONING_MODEL,
-    api_key=GEMINI_API_KEY,
-    temperature=0,
-    max_tokens=4096
+openai_reasoning_llm = LLM(
+    model="gpt-4o-mini",
+    api_key=OPENAI_API_KEY,
+    temperature=0.1,
+    max_tokens=8192
 )
 
 # Initialize the tools
@@ -42,26 +46,20 @@ tech_tool=TechDataTool(result_as_answer=True)
 scrape_tool = FirecrawlScrapeWebsiteTool(
     onlyMainContent=True
 )
-search_tool = SerperDevTool(
-    country="vn",
-    locale="vn",
-    location="Hanoi, Hanoi, Vietnam",
-    n_results=20
-)
+search_tool = BraveSearchTool()
 web_search_tool = WebsiteSearchTool(
     config=dict(
         llm={
-            "provider": "google",
+            "provider": "openai",
             "config": {
-                "model": GEMINI_MODEL,
-                "api_key": GEMINI_API_KEY
+                "model": OPENAI_MODEL,
+                "api_key": OPENAI_API_KEY
             }
         },
         embedder={
-            "provider": "google",
+            "provider": "openai",
             "config": {
-                "model": "models/text-embedding-004",
-                "task_type": "retrieval_document"
+                "model": "text-embedding-3-small"
             }
         }
     )
@@ -94,11 +92,10 @@ class VnStockAdvisor():
     @agent
     def stock_news_researcher(self) -> Agent:
         return Agent(
-            config=self.agents_config["stock_news_researcher"],
-            verbose=True,
-            llm=gemini_llm,
+            config=self.agents_config['stock_news_researcher'],
             tools=[search_tool, scrape_tool],
-            max_rpm=10
+            llm=openai_llm,
+            verbose=True
         )
 
     @agent
@@ -106,15 +103,15 @@ class VnStockAdvisor():
         return Agent(
             config=self.agents_config["fundamental_analyst"],
             verbose=True,
-            llm=gemini_llm,
+            llm=openai_llm,
             tools=[fund_tool, file_read_tool],
             knowledge_sources=[json_source],
             max_rpm=10,
             embedder={
-                "provider": "google",
+                "provider": "openai",
                 "config": {
-                    "model": "models/text-embedding-004",
-                    "api_key": GEMINI_API_KEY,
+                    "model": "text-embedding-3-small",
+                    "api_key": OPENAI_API_KEY,
                 }
             }
         )
@@ -124,7 +121,7 @@ class VnStockAdvisor():
         return Agent(
             config=self.agents_config["technical_analyst"],
             verbose=True,
-            llm=gemini_llm,
+            llm=openai_llm,
             tools=[tech_tool],
             max_rpm=10
         )
@@ -134,7 +131,7 @@ class VnStockAdvisor():
         return Agent(
             config=self.agents_config["investment_strategist"],
             verbose=True,
-            llm=gemini_reasoning_llm,
+            llm=openai_reasoning_llm,
             max_rpm=10
         )
 

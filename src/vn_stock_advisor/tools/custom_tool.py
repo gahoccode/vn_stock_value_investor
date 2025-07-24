@@ -17,31 +17,76 @@ class FundDataTool(BaseTool):
 
     def _run(self, argument: str) -> str:
         try:
+            # Validate input
+            if not argument or not isinstance(argument, str):
+                return "Error: Invalid stock symbol provided"
+            
+            argument = argument.strip().upper()
+            
             # Initialize the class 
             stock = Vnstock().stock(symbol=argument, source="TCBS")
             financial_ratios = stock.finance.ratio(period="quarter")
             income_df = stock.finance.income_statement(period="quarter")
             company = Vnstock().stock(symbol=argument, source='TCBS').company
 
-            # Get company full name & industry
-            full_name = company.profile().get("company_name").iloc[0]
-            industry = company.overview().get("industry").iloc[0]
+            # Validate data availability
+            if financial_ratios.empty or income_df.empty:
+                return f"Error: No data available for symbol {argument}"
+
+            # Get company full name & industry with safe access
+            profile_data = company.profile()
+            overview_data = company.overview()
+            
+            full_name = profile_data.get("company_name").iloc[0] if not profile_data.empty else argument
+            industry = overview_data.get("industry").iloc[0] if not overview_data.empty else "Unknown"
 
             # Get data from the latest row of DataFrame for financial ratios
-            latest_ratios = financial_ratios.iloc[0]
+            latest_ratios = financial_ratios.iloc[0] if not financial_ratios.empty else None
 
             # Get last 4 quarters of income statement
             last_4_quarters = income_df.head(4)
             
-            # Extract financial ratios data
-            pe_ratio = latest_ratios.get("price_to_earning", "N/A")
-            pb_ratio = latest_ratios.get("price_to_book", "N/A")
-            roe = latest_ratios.get("roe", "N/A")
-            roa = latest_ratios.get("roa", "N/A")
-            eps = latest_ratios.get("earning_per_share", "N/A")
-            de = latest_ratios.get("debt_on_equity", "N/A")
-            profit_margin = latest_ratios.get("gross_profit_margin", "N/A")
-            evebitda = latest_ratios.get("value_before_ebitda", "N/A")
+            # Helper function to safely extract and format ratios
+            def safe_extract_ratio(df, column_name, default="N/A"):
+                """Safely extract ratio value from DataFrame with proper handling of NaN values"""
+                if df is None or df.empty:
+                    return default
+                
+                # Try multiple possible column names for each ratio
+                column_mapping = {
+                    'price_to_earning': ['price_to_earning', 'pe', 'P/E', 'p_e_ratio'],
+                    'price_to_book': ['price_to_book', 'pb', 'P/B', 'p_b_ratio'],
+                    'roe': ['roe', 'ROE', 'return_on_equity', 'return_on_equity_percent'],
+                    'roa': ['roa', 'ROA', 'return_on_assets', 'return_on_assets_percent'],
+                    'earning_per_share': ['earning_per_share', 'eps', 'EPS', 'earnings_per_share'],
+                    'debt_on_equity': ['debt_on_equity', 'de', 'D/E', 'debt_equity_ratio'],
+                    'gross_profit_margin': ['gross_profit_margin', 'gross_margin', 'profit_margin'],
+                    'value_before_ebitda': ['value_before_ebitda', 'ev_ebitda', 'ev_ebitda_ratio']
+                }
+                
+                possible_names = column_mapping.get(column_name, [column_name])
+                
+                for name in possible_names:
+                    if name in df.index if isinstance(df, pd.Series) else name in df.columns:
+                        value = df[name] if isinstance(df, pd.Series) else df[name].iloc[0]
+                        if pd.notna(value) and str(value).strip():
+                            # Format as percentage for ratios that should be percentages
+                            if column_name in ['roe', 'roa', 'gross_profit_margin']:
+                                return f"{float(value):.2f}%"
+                            else:
+                                return f"{float(value):.2f}" if isinstance(value, (int, float)) else str(value)
+                
+                return default
+
+            # Extract financial ratios data with proper handling
+            pe_ratio = safe_extract_ratio(latest_ratios, "price_to_earning")
+            pb_ratio = safe_extract_ratio(latest_ratios, "price_to_book")
+            roe = safe_extract_ratio(latest_ratios, "roe")
+            roa = safe_extract_ratio(latest_ratios, "roa")
+            eps = safe_extract_ratio(latest_ratios, "earning_per_share")
+            de = safe_extract_ratio(latest_ratios, "debt_on_equity")
+            profit_margin = safe_extract_ratio(latest_ratios, "gross_profit_margin")
+            evebitda = safe_extract_ratio(latest_ratios, "value_before_ebitda")
 
             # Format quarterly income data
             quarterly_trends = []
@@ -91,13 +136,22 @@ class TechDataTool(BaseTool):
 
     def _run(self, argument: str) -> str:
         try:
+            # Validate input
+            if not argument or not isinstance(argument, str):
+                return "Error: Invalid stock symbol provided"
+            
+            argument = argument.strip().upper()
+            
             # Initialize vnstock and get historical price data
             stock = Vnstock().stock(symbol=argument, source="TCBS")
             company = Vnstock().stock(symbol=argument, source='TCBS').company
 
-            # Get company full name & industry
-            full_name = company.profile().get("company_name").iloc[0]
-            industry = company.overview().get("industry").iloc[0]
+            # Get company full name & industry with safe access
+            profile_data = company.profile()
+            overview_data = company.overview()
+            
+            full_name = profile_data.get("company_name").iloc[0] if not profile_data.empty else argument
+            industry = overview_data.get("industry").iloc[0] if not overview_data.empty else "Unknown"
             
             # Get price data for the last 200 days
             end_date = datetime.now()
@@ -108,8 +162,13 @@ class TechDataTool(BaseTool):
                 interval="1D"  # Daily data
             )
             
-            if price_data.empty:
+            if price_data.empty or len(price_data) < 5:
                 return f"Không tìm thấy dữ liệu lịch sử cho cổ phiếu {argument}"
+            
+            # Validate required columns exist
+            required_columns = ['close', 'volume']
+            if not all(col in price_data.columns for col in required_columns):
+                return f"Error: Missing required data columns for {argument}"
             
             # Calculate technical indicators
             tech_data = self._calculate_indicators(price_data)
@@ -117,14 +176,14 @@ class TechDataTool(BaseTool):
             # Identify support and resistance levels
             support_resistance = self._find_support_resistance(price_data)
             
-            # Get recent price and volume data
-            current_price = price_data['close'].iloc[-1]
-            recent_prices = price_data['close'].iloc[-5:-1]
-            current_volume = price_data['volume'].iloc[-1]
-            recent_volumes = price_data['volume'].iloc[-5:-1]
+            # Get recent price and volume data with safe access
+            current_price = price_data['close'].iloc[-1] if len(price_data) > 0 else 0
+            recent_prices = price_data['close'].iloc[-5:-1] if len(price_data) >= 5 else price_data['close']
+            current_volume = price_data['volume'].iloc[-1] if len(price_data) > 0 else 0
+            recent_volumes = price_data['volume'].iloc[-5:-1] if len(price_data) >= 5 else price_data['volume']
             
-            # Format result
-            latest_indicators = tech_data.iloc[-1]
+            # Format result with safe access
+            latest_indicators = tech_data.iloc[-1] if not tech_data.empty else {}
             
             result = f"""Mã cổ phiếu: {argument}
             Tên công ty: {full_name}
