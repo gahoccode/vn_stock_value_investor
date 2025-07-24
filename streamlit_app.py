@@ -6,7 +6,7 @@ A user-friendly interface for the CrewAI multi-agent stock analysis system
 import streamlit as st
 import os
 import json
-import os, sys, json, subprocess
+import sys
 from datetime import datetime, timedelta, date
 from dotenv import load_dotenv
 
@@ -20,10 +20,8 @@ OPENAI_REASONING_MODEL = os.getenv("OPENAI_REASONING_MODEL", "gpt-4o-mini")
 BRAVE_API_KEY = os.getenv("BRAVE_API_KEY")
 FIRECRAWL_API_KEY = os.getenv("FIRECRAWL_API_KEY")
 
-import pandas as pd
 import time
 from pathlib import Path
-import glob
 
 # Set page configuration
 st.set_page_config(
